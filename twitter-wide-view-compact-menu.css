@@ -1,0 +1,301 @@
+/* ==UserStyle==
+@name           Twitter Wide View + Compact Menu
+@namespace      twitter-wide-view-userstyle
+@version        1.4.0
+@description    Removes the right sidebar, stretches the timeline to full width, makes the left menu compact, lets you hide menu items and floating buttons, fade the UI and soften post separators (X / Twitter)
+@license        MIT
+@preprocessor   stylus
+@author			tx2x
+@updateURL		
+
+
+@var checkbox wide_view     "Wide view: remove right column and stretch the timeline" 1
+@var checkbox compact_menu  "Compact left menu: reduce spacing between menu items" 1
+@var range    menu_padding  "Compact menu: vertical padding of each item" [4, 0, 16, 1, 'px']
+
+@var range    menu_opacity       "Left menu opacity (all menu elements at once, 1 = fully visible)" [1, 0.1, 1, 0.05]
+@var checkbox menu_opacity_hover "Left menu opacity: restore full opacity while hovering the menu" 1
+@var checkbox menu_opacity_top   "Apply the same opacity to the top bar (section title, back button, tabs)" 1
+
+@var range    separator_opacity  "Separator lines (between posts and on the sides of the post area): opacity in % (100 = normal, 50 = half, 0 = hidden)" [100, 0, 100, 5]
+
+@var checkbox hide_chat_drawer   "Hide floating button: Chat (bottom right)" 0
+@var checkbox hide_grok_drawer   "Hide floating button: Grok (bottom right)" 0
+
+@var checkbox hide_logo           "Hide menu item: X logo" 0
+@var checkbox hide_home           "Hide menu item: Home" 0
+@var checkbox hide_explore        "Hide menu item: Explore" 0
+@var checkbox hide_notifications  "Hide menu item: Notifications" 0
+@var checkbox hide_messages       "Hide menu item: Messages" 0
+@var checkbox hide_grok           "Hide menu item: Grok" 0
+@var checkbox hide_calls          "Hide menu item: Calls" 0
+@var checkbox hide_creator_studio "Hide menu item: Creator Studio" 0
+@var checkbox hide_jobs           "Hide menu item: Jobs" 0
+@var checkbox hide_communities    "Hide menu item: Communities" 0
+@var checkbox hide_premium        "Hide menu item: Premium" 0
+@var checkbox hide_verified_orgs  "Hide menu item: Verified Orgs" 0
+@var checkbox hide_profile        "Hide menu item: Profile" 0
+@var checkbox hide_more           "Hide menu item: More" 0
+@var checkbox hide_post_button    "Hide menu item: Post button" 0
+@var checkbox hide_account        "Hide menu item: Account switcher (bottom left)" 0
+==/UserStyle== */
+
+@-moz-document domain("x.com"), domain("twitter.com") {
+
+    /* ==================================================================
+       SELECTOR VARIABLES
+       Everything is anchored at a few known elements and uses only
+       child combinators of bounded depth, so the browser can match the
+       selectors cheaply (no page-wide :has() scans).
+       ================================================================== */
+
+    col = 'div[data-testid="primaryColumn"]'
+
+    /* Wrapper chain of the main column: primaryColumn > div, > div > div, ... (7 levels).
+       Covers the timeline containers of Home, single posts, search, profiles and
+       profile tabs (Posts / Replies / Media / ...) without depending on the UI language. */
+    col_wrappers = col + ' > div, ' + col + ' > div > div, ' + col + ' > div > div > div, ' + col + ' > div > div > div > div, ' + col + ' > div > div > div > div > div, ' + col + ' > div > div > div > div > div > div, ' + col + ' > div > div > div > div > div > div > div'
+
+    /* Safety guard for the top bar opacity: an element is matched only if it is
+       NOT inside a post / timeline cell and does NOT contain a post, cell, photo or video. */
+    not_in_post = ':not(article *):not([data-testid="cellInnerDiv"] *):not(:has(article)):not(:has([data-testid="cellInnerDiv"])):not(:has([data-testid="tweetPhoto"])):not(:has(video))'
+
+    /* Top bar elements of the main column: section title, back/close button, tabs */
+    top_title = col + ' h2[role="heading"]' + not_in_post
+    top_tabs  = col + ' div[role="tablist"]' + not_in_post
+    top_back  = col + ' [data-testid="app-bar-back"]' + not_in_post
+    top_close = col + ' [data-testid="app-bar-close"]' + not_in_post
+
+    /* Elements that carry the horizontal separator between posts
+       (the cell itself or its first child) and the line under the profile tabs */
+    post_separators = col + ' div[data-testid="cellInnerDiv"], ' + col + ' div[data-testid="cellInnerDiv"] > div, ' + col + ' nav'
+
+    /* X themes are detected through the inline background color of <body> */
+    theme_light = 'body[style*="rgb(255"]'
+    theme_dim   = 'body[style*="rgb(21"]'
+
+    /* ==================================================================
+       WIDE VIEW
+       ================================================================== */
+    if wide_view {
+
+        /* Remove the right column (search, "What's happening", "Who to follow") */
+        div[data-testid="sidebarColumn"] {
+            display: none !important;
+        }
+
+        /* Outer layout containers and the main column itself */
+        main[role="main"] > div,
+        main[role="main"] > div > div,
+        {col} {
+            max-width: 100% !important;
+        }
+
+        /* Wrapper chain of the main column (see col_wrappers above) */
+        {col_wrappers} {
+            max-width: 100% !important;
+        }
+
+        /* Timeline body (posts, profile header + tabs + tab content):
+           remove the fixed width limits at the two levels where X sets them */
+        {col} > div > div:last-child,
+        {col} > div > div:last-child > div > div {
+            min-width: 0 !important;
+            max-width: none !important;
+            width: 100% !important;
+        }
+
+        /* Posts container on the Home timeline */
+        {col} div[aria-label="Home timeline"] > div:last-child {
+            max-width: 100% !important;
+        }
+    }
+
+    /* ==================================================================
+       COMPACT LEFT MENU
+       ================================================================== */
+    if compact_menu {
+
+        /* Reduce the inner vertical padding of every menu item */
+        header[role="banner"] nav[role="navigation"] > a > div,
+        header[role="banner"] nav[role="navigation"] [data-testid="AppTabBar_More_Menu"] > div {
+            padding-top: menu_padding !important;
+            padding-bottom: menu_padding !important;
+        }
+
+        /* Remove outer margins between menu items */
+        header[role="banner"] nav[role="navigation"] > a,
+        header[role="banner"] nav[role="navigation"] [data-testid="AppTabBar_More_Menu"] {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* Bring the "Post" button closer to the menu */
+        header[role="banner"] a[data-testid="SideNav_NewTweet_Button"] {
+            margin-top: 8px !important;
+        }
+    }
+
+    /* ==================================================================
+       INTERFACE OPACITY
+       One slider controls the whole left menu (logo, items, Post button,
+       account switcher) and, optionally, the top bar of the main column
+       (section title, back button, tabs). Not applied when set to 1.
+       Posts (text, images, video) are never touched.
+       ================================================================== */
+    if menu_opacity < 1 {
+        header[role="banner"] {
+            opacity: menu_opacity !important;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        if menu_opacity_hover {
+            header[role="banner"]:hover {
+                opacity: 1 !important;
+            }
+        }
+
+        if menu_opacity_top {
+            {top_title},
+            {top_tabs},
+            {top_back},
+            {top_close} {
+                opacity: menu_opacity !important;
+                transition: opacity 0.15s ease-in-out;
+            }
+
+            if menu_opacity_hover {
+                {top_title}:hover,
+                {top_tabs}:hover,
+                {top_back}:hover,
+                {top_close}:hover {
+                    opacity: 1 !important;
+                }
+            }
+        }
+    }
+
+    /* ==================================================================
+       SEPARATOR LINES
+       One slider scales the opacity of ALL separator lines at once:
+         - horizontal lines between posts (and under the profile tabs)
+         - vertical lines on the left and right of the post area
+       100 = untouched, 50 = half as visible, 0 = hidden completely.
+       Only border colors are changed, never the content of posts.
+       The original line is roughly 20% (dark), 16% (dim) or 7% (light) of
+       the text color, so the new color is derived from the same base.
+       ================================================================== */
+    if separator_opacity < 100 {
+        sep_factor = separator_opacity / 100
+        sep_color = unquote('color-mix(in srgb, currentColor calc(var(--twv-sep-base, 20%) * ' + sep_factor + '), transparent)')
+
+        body {
+            --twv-sep-base: 20%;
+        }
+
+        {theme_dim} {
+            --twv-sep-base: 16%;
+        }
+
+        {theme_light} {
+            --twv-sep-base: 7%;
+        }
+
+        /* Horizontal lines */
+        {post_separators} {
+            border-top-color: sep_color !important;
+            border-bottom-color: sep_color !important;
+        }
+
+        /* Vertical lines on both sides of the post area */
+        {col} {
+            border-left-color: sep_color !important;
+            border-right-color: sep_color !important;
+        }
+    }
+
+    /* ==================================================================
+       HIDE ELEMENTS (all disabled by default; enable them in the Stylus
+       style options). Selectors of all enabled options are collected and
+       emitted as ONE rule, which keeps the stylesheet small.
+       ================================================================== */
+    hidden = ()
+
+    /* Floating buttons (bottom right corner) */
+    if hide_chat_drawer {
+        push(hidden, '[data-testid="DMDrawer" i]')
+        push(hidden, '[data-testid="chatDrawer" i]')
+        push(hidden, '[data-testid^="chat-drawer" i]')
+    }
+    if hide_grok_drawer {
+        push(hidden, '[data-testid="GrokDrawer" i]')
+        push(hidden, '[data-testid^="grok-drawer" i]')
+    }
+
+    /* Left menu items */
+    if hide_logo {
+        push(hidden, 'header[role="banner"] h1')
+    }
+    if hide_home {
+        push(hidden, 'header[role="banner"] a[data-testid="AppTabBar_Home_Link"]')
+    }
+    if hide_explore {
+        push(hidden, 'header[role="banner"] a[data-testid="AppTabBar_Explore_Link"]')
+    }
+    if hide_notifications {
+        push(hidden, 'header[role="banner"] a[data-testid="AppTabBar_Notifications_Link"]')
+    }
+    if hide_messages {
+        push(hidden, 'header[role="banner"] a[data-testid="AppTabBar_DirectMessage_Link"]')
+    }
+    if hide_grok {
+        push(hidden, 'header[role="banner"] nav a[href="/i/grok"]')
+    }
+    /* Calls: the exact href / data-testid of this new item is not documented,
+       so several likely variants are matched (all limited to the left menu) */
+    if hide_calls {
+        push(hidden, 'header[role="banner"] a[href="/calls" i]')
+        push(hidden, 'header[role="banner"] a[href^="/i/call" i]')
+        push(hidden, 'header[role="banner"] a[data-testid*="call" i]')
+        push(hidden, 'header[role="banner"] a[aria-label="Calls"]')
+    }
+    /* Creator Studio is not limited to the sidebar: it can also live in the "More" popup */
+    if hide_creator_studio {
+        push(hidden, 'a[href*="creators/studio"]')
+        push(hidden, 'a[href*="creator-studio"]')
+    }
+    if hide_jobs {
+        push(hidden, 'header[role="banner"] nav a[href="/jobs"]')
+        push(hidden, 'header[role="banner"] a[data-testid="jobs-tab-item"]')
+    }
+    if hide_communities {
+        push(hidden, 'header[role="banner"] nav a[href$="/communities"]')
+    }
+    if hide_premium {
+        push(hidden, 'header[role="banner"] nav a[href="/i/premium_sign_up"]')
+        push(hidden, 'header[role="banner"] a[data-testid="premium-hub-tab"]')
+    }
+    if hide_verified_orgs {
+        push(hidden, 'header[role="banner"] nav a[href="/i/verified-orgs-signup"]')
+        push(hidden, 'header[role="banner"] a[data-testid="vo-signup-tab"]')
+    }
+    if hide_profile {
+        push(hidden, 'header[role="banner"] a[data-testid="AppTabBar_Profile_Link"]')
+    }
+    if hide_more {
+        push(hidden, 'header[role="banner"] [data-testid="AppTabBar_More_Menu"]')
+    }
+    if hide_post_button {
+        push(hidden, 'header[role="banner"] a[data-testid="SideNav_NewTweet_Button"]')
+    }
+    if hide_account {
+        push(hidden, 'header[role="banner"] [data-testid="SideNav_AccountSwitcher_Button"]')
+    }
+
+    if length(hidden) > 0 {
+        hidden_selector = join(', ', hidden)
+        {hidden_selector} {
+            display: none !important;
+        }
+    }
+}
